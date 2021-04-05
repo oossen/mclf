@@ -538,6 +538,39 @@ class InertialComponent(SageObject):
             the closed unit disk.
 
         """
+      
+      
+        vK = self.reduction_tree().base_valuation()
+        K = vK.domain()
+        # assert K == QQ, "K must be QQ"
+        Kh = FakepAdicCompletion(K, vK)
+        if self.is_separable():
+            fiber = self.reduction_tree().curve().fiber(self.basepoint().function_field_valuation())
+            # `fiber` should be a list of points on Y
+            F = []
+            for xi in fiber:
+                  L = xi.residue_field()
+                  # L should be a (relative) number field (which may include QQ)
+                  if not L == QQ:
+                        f = L.absolute_polynomial().change_ring(K)
+                        F += [g for g, m in f.factor()]
+        else:
+            L = self.basepoint().function_field_valuation().residue_field()
+            if L == QQ:
+                  F = []
+            else:
+                  F = [L.absolute_polynomial().change_ring(K)]
+        e = self.type_II_point().pseudovaluation_on_polynomial_ring().E()
+            # print("F = ", F)
+            # print("e = ", e)
+        self._splitting_field = Kh
+      
+        print(F)
+            
+        return self._splitting_field
+        
+      
+        '''
         if not hasattr(self, "_splitting_field"):
             vK = self.reduction_tree().base_valuation()
             K = vK.domain()
@@ -567,6 +600,8 @@ class InertialComponent(SageObject):
             # print("e = ", e)
             self._splitting_field = WeakPadicGaloisExtension(Kh, F, minimal_ramification=e)
         return self._splitting_field
+        
+        '''
 
     def upper_components(self, u=Infinity):
         r"""
