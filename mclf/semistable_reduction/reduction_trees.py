@@ -543,13 +543,19 @@ class InertialComponent(SageObject):
         vK = self.reduction_tree().base_valuation()
         K = vK.domain()
         # assert K == QQ, "K must be QQ"
-        Kh = FakepAdicCompletion(K, vK)
+        print("Inertial component:")
+        print(self)
+        print(self.is_separable())
+		
         if self.is_separable():
+            print(self.basepoint())
             fiber = self.reduction_tree().curve().fiber(self.basepoint().function_field_valuation())
             # `fiber` should be a list of points on Y
+            print(fiber)
             F = []
             for xi in fiber:
                   L = xi.residue_field()
+                  print(L)
                   # L should be a (relative) number field (which may include QQ)
                   if not L == QQ:
                         f = L.absolute_polynomial().change_ring(K)
@@ -563,11 +569,14 @@ class InertialComponent(SageObject):
         e = self.type_II_point().pseudovaluation_on_polynomial_ring().E()
             # print("F = ", F)
             # print("e = ", e)
-        self._splitting_field = Kh
+        
       
         print(F)
+		
+		#Kh = FakepAdicCompletion(K, vK)
+		#self._splitting_field = Kh
             
-        return self._splitting_field
+        #return self._splitting_field
         
       
         '''
