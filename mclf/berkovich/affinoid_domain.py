@@ -335,7 +335,7 @@ class AffinoidTree(BerkovichTree):
             T2 = _connected_component_tree(T1)
             if T1.has_parent() and not T1.parent().root_is_in():
                 new_component = AffinoidTree(X, root=T1.parent().root(), is_in=False)
-                new_component.make_child(T1)
+                new_component.make_child(T2)
             else:
                 new_component = T2
             components.append(new_component)
