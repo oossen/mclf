@@ -4,7 +4,6 @@ Semistable models of plane quartic curves at `p=3`
 ==================================================
 """
 
-from mclf import *
 from sage.geometry.newton_polygon import NewtonPolygon
 
 
