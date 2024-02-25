@@ -4,8 +4,16 @@ Semistable models of plane quartic curves at `p=3`
 ==================================================
 """
 
-from sage.geometry.newton_polygon import NewtonPolygon
 from sage.all import ZZ, QQ, FunctionField, SageObject, Infinity
+from sage.geometry.newton_polygon import NewtonPolygon
+from sage.functions.other import *
+from mclf.berkovich.berkovich_line import *
+from mclf.berkovich.affinoid_domain import *
+from mclf.berkovich.piecewise_affine_functions import *
+from mclf.curves.smooth_projective_curves import *
+from mclf.semistable_reduction.reduction_trees import ReductionTree
+from mclf.semistable_reduction.semistable_models import SemistableModel
+
 
 
 class Quartic3Model(SemistableModel):
@@ -49,8 +57,8 @@ class Quartic3Model(SemistableModel):
 			x = R.gens()[0]
 			y = R.gens()[1]
 			F = R(FY.polynomial())
-			pi = vK.uniformizer()^(vK(vK.uniformizer()).denominator()) #now v(pi)=1
-			F = F(x=x/pi^s, y=y/pi^(2*s))*pi^(6*s)
+			pi = vK.uniformizer()**(vK(vK.uniformizer()).denominator()) #now v(pi)=1
+			F = F(x=x/pi**s, y=y/pi**(2*s))*pi**(6*s)
 			Y = SmoothProjectiveCurve(F)
 			print("We do a base change so that the branch locus is integral and now consider", Y)
 		self._scaling_factor = s
@@ -168,9 +176,9 @@ class Quartic3Model(SemistableModel):
 			psi = psi.numerator()
 			x = self._FX.gen()
 			vK = self._base_valuation
-			pi = vK.uniformizer()^(vK(vK.uniformizer()).denominator())
+			pi = vK.uniformizer()**(vK(vK.uniformizer()).denominator())
 			degree = psi.degree()
-			new_psi = self._FX(psi(x*pi^(self._scaling_factor)).numerator().monic())
+			new_psi = self._FX(psi(x*pi**(self._scaling_factor)).numerator().monic())
 
 			new_xi = X.point_from_discoid(new_psi, s - self._scaling_factor*degree)
 			if new_xi.is_gauss_point():
@@ -233,24 +241,27 @@ class Quartic3Model(SemistableModel):
 
 		first_leaf = True
 		for factor, _ in Delta.numerator().factor():
-			L.<a> = K.extension(factor)
+			L = K.extension(factor, 'a')
+			a = L.gen()
 			
 			R = L[FX.variable_name(), FY.variable_name()]
 			x = R.gens()[0]
 			y = R.gens()[1]
 			Y_poly = FY.polynomial()
-			F0 = sum([y^i*sum([x^j*Y_poly[i].numerator()[j] for j in range(Y_poly[i].numerator().degree()+1)]) for i in range(Y_poly.degree()+1)])
+			F0 = sum([y**i*sum([x**j*Y_poly[i].numerator()[j] for j in range(Y_poly[i].numerator().degree()+1)]) for i in range(Y_poly.degree()+1)])
 			F = F0.subs({x:a,y:y}).univariate_polynomial()
 			assert len(F.roots()) > 0, "there is no rational point above"
 			b = F.roots()[0][0]
 			G = F0.subs({x:x+a,y:y+b})
-			a1 = G.monomial_coefficient(x*y^2)
-			b2 = G.monomial_coefficient(x^2*y)
-			c3 = G.monomial_coefficient(x^3)
+			a1 = G.monomial_coefficient(x*y**2)
+			b2 = G.monomial_coefficient(x**2*y)
+			c3 = G.monomial_coefficient(x**3)
 
-			R.<u> = L[]
-			H = u^3 + a1*u^2 + b2*u + c3
-			M.<c> = L.extension(H.factor()[0][0])
+			R = L['u']
+			u = R.gen()
+			H = u**3 + a1*u**2 + b2*u + c3
+			M = L.extension(H.factor()[0][0], 'c')
+			c = M.gen()
 			R = M[FX.variable_name(), FY.variable_name()]
 			x = R.gens()[0]
 			y = R.gens()[1]
@@ -272,15 +283,15 @@ class Quartic3Model(SemistableModel):
 				wL = wL[0]
 				w = wL.extensions(M)[0] #it should not matter which extension to M we choose
 				
-				print([w(good_equation.monomial_coefficient(y^2*x^i)) for i in range(3)])
-				print([w(good_equation.monomial_coefficient(y*x^i)) for i in range(4)])
-				print([w(good_equation.monomial_coefficient(x^i)) for i in range(5)])
-				A = minimum([AffineMap(i, w(good_equation.monomial_coefficient(y^2*x^i))) for i in range(3) if not good_equation.monomial_coefficient(y^2*x^i) == 0])
-				B = minimum([AffineMap(i, w(good_equation.monomial_coefficient(y*x^i))) for i in range(4) if not good_equation.monomial_coefficient(y*x^i) == 0])
-				C = minimum([AffineMap(i, w(good_equation.monomial_coefficient(x^i))) for i in range(5) if not good_equation.monomial_coefficient(x^i) == 0])
-				D = maximum([AffineMap(0, 0), minimum([AffineMap(0, 1), A - (1/3)*C, B - (2/3)*C])])
+				print([w(good_equation.monomial_coefficient(y**2*x**i)) for i in range(3)])
+				print([w(good_equation.monomial_coefficient(y*x**i)) for i in range(4)])
+				print([w(good_equation.monomial_coefficient(x**i)) for i in range(5)])
+				A = minimum([AffineMap(i, w(good_equation.monomial_coefficient(y**2*x**i))) for i in range(3) if not good_equation.monomial_coefficient(y**2*x**i) == 0])
+				B = minimum([AffineMap(i, w(good_equation.monomial_coefficient(y*x**i))) for i in range(4) if not good_equation.monomial_coefficient(y*x**i) == 0])
+				C = minimum([AffineMap(i, w(good_equation.monomial_coefficient(x**i))) for i in range(5) if not good_equation.monomial_coefficient(x**i) == 0])
+				D = maximum([AffineMap(0, 0), minimum([AffineMap(0, 1), A - QQ(1/3)*C, B - QQ(2/3)*C])])
 
-				D_pos = restriction(D, 0, infinity)
+				D_pos = restriction(D, 0, +Infinity)
 
 				# make sure the approximation is good enough:
 				r = D_pos._res[-1].start_point()
@@ -291,7 +302,7 @@ class Quartic3Model(SemistableModel):
 					print("We have to improve an approximation, stand by...")
 					discoid = xi.improved_approximation().discoid()
 					psi = discoid[0]
-				path_AT = AffinoidTree(X, root = xi, is_in = D(infinity) == 0)
+				path_AT = AffinoidTree(X, root = xi, is_in = D(+Infinity) == 0)
 				target, target_tree, lower_target, target_vertex = mu_locus_AT.position(xi)
 				for f in reversed(D_pos._res[1:]):
 					r = f.start_point()
@@ -312,8 +323,8 @@ class Quartic3Model(SemistableModel):
 					mu_locus_AT.make_child(path_AT)
 					path_AT.make_parent(mu_locus_AT)
 
-					D_neg = restriction(D, -infinity, 0)
-					neg_path_AT = AffinoidTree(X, root = X.point_from_discoid(FX.gen(), D_neg._res[0].end_point() - 1), is_in = D(-infinity) == 0)
+					D_neg = restriction(D, -Infinity, 0)
+					neg_path_AT = AffinoidTree(X, root = X.point_from_discoid(FX.gen(), D_neg._res[0].end_point() - 1), is_in = D(-Infinity) == 0)
 					for f in (D_neg._res[:-1]):
 						r = f.end_point()
 						new_candidate = X.point_from_discoid(FX.gen(), r)
@@ -371,7 +382,7 @@ class Quartic3Model(SemistableModel):
 
 		h = R.fraction_field().hom([FX.gen(), FY.gen()])
 		b0 = h(F.monomial_coefficient(y))
-		C = [h(F.monomial_coefficient(t^i)) for i in range(F.coefficient({y:0, u:0}).degree(t) + 1)]
+		C = [h(F.monomial_coefficient(t**i)) for i in range(F.coefficient({y:0, u:0}).degree(t) + 1)]
 
 		print("b0=", b0)
 		print("c2=", C[2])
@@ -400,7 +411,7 @@ def _discoid_radius(NP, r):
 	#          If on the other hand r=1, then three slopes get replaced, so the output is 1 + 1 + 1 + 0 + 0 + 0 = 3
 
 	if NP.vertices()[0][0] == 1: #the first slope is infinity
-		slopes = [infinity] + [-x for x in NP.slopes()]
+		slopes = [+Infinity] + [-x for x in NP.slopes()]
 	else:
 		assert NP.vertices()[0][0] == 0, "the Newton polygon has an unexpected shape"
 		assert -NP.slopes()[0] >= r, "the approximation is not good enough"
@@ -415,7 +426,8 @@ def npolygon(f, a, v):
 		x = f.parent().gen()
 	else:	
 		A = a.parent()
-		R.<x> = A[]
+		R = A['x']
+		x = R.gen()
 		f = R(f)
 	f = f(x + a)
 
@@ -442,10 +454,11 @@ def random_quartic(large_coefficients=False, convenient_form=False):
 		C[0] = 0
 		C[3] = 0
 
-	R.<x,y> = QQ[]
-	F = y^3 + y^2*sum([A[i]*x^i for i in range(3)]) + y*sum([B[i]*x^i for i in range(4)]) + sum([C[i]*x^i for i in range(5)])
-	R.<x> = QQ[]
-	R.<y> = R[]
+	R = QQ['x', 'y']
+	x, y = R.gens()
+	F = y**3 + y**2*sum([A[i]*x**i for i in range(3)]) + y*sum([B[i]*x**i for i in range(4)]) + sum([C[i]*x**i for i in range(5)])
+	R = QQ['x']
+	R = R['y']
 	G = R(F)
 	if not G.is_irreducible():
 		print("This quartic is not irreducible, try again...")
@@ -472,14 +485,14 @@ class AffineMap(SageObject):
 
 	def __init__(self, a, b, sup=None, inf=None):
 
-		assert not (a == infinity or a == -infinity), "it doesn't make sense to have infinite slope"
+		assert not (a == +Infinity or a == -Infinity), "it doesn't make sense to have infinite slope"
 
 		self._a = a
 		self._b = b
 		if sup is None:
-			sup = infinity
+			sup = +Infinity
 		if inf is None:
-			inf = -infinity
+			inf = -Infinity
 		self._sup = sup
 		self._inf = inf
 
@@ -546,7 +559,7 @@ class AffineMap(SageObject):
 
 	def is_infinity(self):
 
-		return self._b == infinity
+		return self._b == +Infinity
 
 
 class PiecewiseAffineMap(SageObject):
@@ -554,6 +567,8 @@ class PiecewiseAffineMap(SageObject):
 	def __init__(self, res):
 
 		for p in zip(res, res[1:]):
+			print(p[0].end_value())
+			print(p[1].start_value())
 			assert p[0].end_value() == p[1].start_value(), "this function is not continuous"
 
 		self._res = res
@@ -692,7 +707,7 @@ def concatenate(l):
 def minimum(functions):
 
 	if len(functions) == 0:
-		return AffineMap(0, infinity)
+		return AffineMap(0, +Infinity)
 
 	if len(functions) > 2:
 		return minimum([minimum(functions[0:2])] + functions[2:])
@@ -707,13 +722,13 @@ def minimum(functions):
 
 	if isinstance(f, AffineMap) and isinstance(g, AffineMap):
 		m = intersection(f, g)
-		if f.start_point() == -infinity and f.end_point() == infinity:
+		if f.start_point() == -Infinity and f.end_point() == +Infinity:
 			test_point = 0
-		if f.start_point() == -infinity and f.end_point() < infinity:
+		if f.start_point() == -Infinity and f.end_point() < +Infinity:
 			test_point = f.end_point() - 1
-		if f.start_point() > -infinity and f.end_point() == infinity:
+		if f.start_point() > -Infinity and f.end_point() == +Infinity:
 			test_point = f.start_point() + 1
-		if f.start_point() > -infinity and f.end_point() < infinity:
+		if f.start_point() > -Infinity and f.end_point() < +Infinity:
 			test_point = (f.start_point() + f.end_point())/2
 
 		if m is None or m <= f.start_point() or m >= f.end_point():
@@ -723,7 +738,7 @@ def minimum(functions):
 				return g
 		else:
 			# now the intersection point m is in the closed interval on which f and g are defined
-			if f.start_point() == -infinity:
+			if f.start_point() == -Infinity:
 				test_point = m - 1
 			else:
 				test_point = (f.start_point() + m)/2
@@ -766,13 +781,13 @@ def maximum(functions):
 
 	if isinstance(f, AffineMap) and isinstance(g, AffineMap):
 		m = intersection(f, g)
-		if f.start_point() == -infinity and f.end_point() == infinity:
+		if f.start_point() == -Infinity and f.end_point() == +Infinity:
 			test_point = 0
-		if f.start_point() == -infinity and f.end_point() < infinity:
+		if f.start_point() == -Infinity and f.end_point() < +Infinity:
 			test_point = f.end_point() - 1
-		if f.start_point() > -infinity and f.end_point() == infinity:
+		if f.start_point() > -Infinity and f.end_point() == +Infinity:
 			test_point = f.start_point() + 1
-		if f.start_point() > -infinity and f.end_point() < infinity:
+		if f.start_point() > -Infinity and f.end_point() < +Infinity:
 			test_point = (f.start_point() + f.end_point())/2
 
 		if m is None or m <= f.start_point() or m >= f.end_point():
