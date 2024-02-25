@@ -17,3 +17,4 @@ from .semistable_reduction.admissible_reduction import *
 from .semistable_reduction.semistable_models import *
 from .semistable_reduction.admissible_reduction import *
 from .semistable_reduction.superp_models import *
+from .semistable_reduction.quartic3_models import *
