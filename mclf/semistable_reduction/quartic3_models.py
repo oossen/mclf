@@ -5,6 +5,7 @@ Semistable models of plane quartic curves at `p=3`
 """
 
 from sage.geometry.newton_polygon import NewtonPolygon
+from sage.all import ZZ, QQ, FunctionField, SageObject, Infinity
 
 
 class Quartic3Model(SemistableModel):
