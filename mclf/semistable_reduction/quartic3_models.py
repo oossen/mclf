@@ -1,7 +1,26 @@
 
-"""
+r"""
 Semistable models of plane quartic curves at `p=3`
 ==================================================
+
+Let `K` be a number field and let `v_K` be a discrete valuation on `K` of residue characteristic `3`.
+In this module we define a class ``Quartic3Model`` which represents semistable model of plane quartic curves over `K`, with respect to the valuation `v_K`.
+We assume that these curves are given by an equation of the form
+
+.. MATH::
+
+           Y: y^3 + Ay^2 + By + C,
+
+where `A, B, C\in K[x]` are polynomials of degree `\le 2, \le 3, \le 4`respectively.  Such a curve naturally defines a cover of `\mathbb{P}_K^1` by projection to the `x`-coordinate.
+The class ``Quartic3Model`` implements the method ``reduction_tree`` of its parent.
+This reduction tree associated to `Y`encodes a model of `\mathbb{P}^1_K`` whose normalization in the function field of `Y` becomes semistable after base change to a finite separable extension of `K`.
+We refer to
+
+- [Oss24] O. Ossen, *Semistable reduction of covers of degree p*, \
+  PhD thesis, to appear.
+
+for the mathematical background underlying our implementation, and particularly to Chapter 5 of op. cit. which contains many worked examples.
+
 """
 
 from sage.all import ZZ, QQ, FunctionField, SageObject, Infinity
@@ -15,17 +34,18 @@ from mclf.semistable_reduction.reduction_trees import ReductionTree
 from mclf.semistable_reduction.semistable_models import SemistableModel
 
 
-
 class Quartic3Model(SemistableModel):
-	"""
+	r"""
 	Return a semistable model of a plane quartic curve.
 
 	INPUT:
 
-	- ``Y`` -- a plane quartic curve over a field `K`
-	- ``vK`` -- a discrete valuation on `K`
+	- ``Y`` -- a plane quartic curve over a number field `K`. We assume that it is given in the normal form discussed above
+	- ``vK`` -- a discrete valuation on ``K`` of residue characteristic `3`
 
-	OUTPUT: the object representing a semistable model of `Y`. 
+	OUTPUT: the object representing a semistable model of `Y`
+
+	If not all branch points of the associated cover `Y\to\mathbb{P}^1_K` are integral, then a change of coordinates is performed.
 
 	EXAMPLES: 
 
@@ -72,9 +92,27 @@ class Quartic3Model(SemistableModel):
 
 
 	def reduction_tree(self):
+		"""
+        Return the reduction tree which determines this semistable model
+
+        """
+
+		if not hasattr(self, "_reduction_tree"):
+			self.compute_semistable_reduction()
+		return self._reduction_tree
+		
+
+	def compute_semistable_reduction(self, verbosity = 0):
+		r"""
+        This method computes the reduction tree associated to this semistable model.
+        Essentially, all boundary points of the tame locus are added to a tree separating the branch points of the cover `Y\to\mathbb{P}^1_K`.
+        Some care is taken to avoid points that are not actually needed to determine a semistable model (which slows down computations)
+
+        """
 
 		TL = self.tail_locus()
-		print("The tail locus is the", TL)
+		if verbosity > 0:
+			print("The tail locus is the", TL)
 		X = self._X
 		T = BerkovichTree(X)
 		T.add_point(X.gauss_point())
@@ -83,17 +121,20 @@ class Quartic3Model(SemistableModel):
 		v = self._base_valuation
 		Y = self._curve
 		R = ReductionTree(Y, v, T)
-		print("Components coming from tail disks are")
+		if verbosity > 0:
+			print("Components coming from tail disks are")
 		tail_genus = 0
 
-		# we skip over the Gauss point, we just added it so there isn't any problems with adding points later
 		for I in R.inertial_components()[1:]:
-			print([U.component() for U in I.upper_components()])
+			if verbosity > 0:
+				print([U.component() for U in I.upper_components()])
 			tail_genus += sum([U.component().genus() for U in I.upper_components()])
-		print("The contribution of the tail disks to the arithmetic genus is", tail_genus)
+		if verbosity > 0:
+			print("The contribution of the tail disks to the arithmetic genus is", tail_genus)
 
 		if tail_genus == 3:
-			print("We are done!")
+			if verbosity > 0:
+				print("We are done!")
 			return R
 
 		V = self.tame_locus()
@@ -102,48 +143,66 @@ class Quartic3Model(SemistableModel):
 		T_Delta = BerkovichTree(X)
 		T_Delta = T_Delta.adapt_to_function(Delta)
 		T_Delta.permanent_completion()
-		print("The entire tame locus is the", V)
+		if verbosity > 0:
+			print("The entire tame locus is the", V)
 		for xi in V.boundary():
 			if any([leaf.root().discoid()[0].degree() > 3 and leaf.parent().root().is_strictly_less(xi) and xi.is_strictly_less(leaf.root()) for leaf in T_Delta.leaves(subtrees=True)]):
-				print("The boundary point", xi, "can't contribute to the arithmetic genus")
+				if verbosity > 0:
+					print("The boundary point", xi, "can't contribute to the arithmetic genus")
+				continue
 			else:
 				T.add_point(xi)
 		R = ReductionTree(Y, v, T)
 		abelian_genus = 0
 		for I in R.inertial_components():
 			abelian_genus += sum([U.component().genus() for U in I.upper_components()])
-		print("The total contribution to the arithmetic genus from boundary points of the tame locus is", abelian_genus)
+		if verbosity > 0:
+			print("The total contribution to the arithmetic genus from boundary points of the tame locus is", abelian_genus)
 
 		if abelian_genus == 3:
-			print("We are done!")
+			if verbosity > 0:
+				print("We are done!")
 			return R
 
 		missing_genus = 3 - abelian_genus
-		print("We take loops into account now")
+		if verbosity > 0:
+			print("We take loops into account now")
 		T = BerkovichTree(X)
 		T.add_point(X.gauss_point())
 		for xi in V.boundary():
 			if any([leaf.root().discoid()[0].degree() > missing_genus and leaf.parent().root().is_strictly_less(xi) and xi.is_strictly_less(leaf.root()) for leaf in T_Delta.leaves(subtrees=True)]):
-				print("The boundary point", xi, "can't contribute to the arithmetic genus")
+				if verbosity > 0:
+					print("The boundary point", xi, "can't contribute to the arithmetic genus")
+				continue
 			else:
 				T.add_point(xi)
 		R = ReductionTree(Y, v, T)
-		print("Now the genus is", R.reduction_genus())
+		if verbosity > 0:
+			print("Now the genus is", R.reduction_genus())
 		if R.reduction_genus() == 3:
-			print("We are done!")
+			if verbosity > 0:
+				print("We are done!")
 			return R
 
-		print("We make sure branch points are separated")
+		if verbosity > 0:
+			print("We make sure branch points are separated")
 		for xi in [xi for xi in T_Delta.vertices() if V.is_in(xi)]:
 			T.add_point(xi)
 		R = ReductionTree(Y, v, T)
-		print("Now the reduction genus is", R.reduction_genus())
+		if verbosity > 0:
+			print("Now the reduction genus is", R.reduction_genus())
 
 		assert R.reduction_genus() == 3, "We are not done"
-		print("We are done!")
-		return R
+		if verbosity > 0:
+			print("We are done!")
+		self.reduction_tree = R
+
 
 	def discriminant_tree(self):
+		r"""
+        Return the tree spanned by the branch points of ``Y\to\mathbb{P}^1_K``
+
+        """
 
 		X = self._X
 		FY = self._FY
@@ -155,12 +214,23 @@ class Quartic3Model(SemistableModel):
 
 
 	def tame_locus(self):
+		"""
+        Return the *tame locus* associated to `Y`. It is the image of the tail locus and the interior locus.
+        See [Oss24] for details, particularly Sections 3.6, 4.4, and 5.3
+
+        """
 
 		if not hasattr(self, "_tame_locus"):
 			self._tame_locus = UnionOfDomains([self.interior_locus(), self.potential_tail_locus()])
 		return self._tame_locus    
 
+
 	def rescaled_tame_locus(self):
+		r"""
+        Return the tame locus associated to `Y` with respect to the original coordinate on ``\mathbb{P}^1_K``,
+        reverting the renormalization that is potentially carried out during instantiation of ``self`` to ensure all branch points are integral
+
+        """
 
 		if self._scaling_factor == 0:
 			return self.tame_locus()
@@ -168,13 +238,12 @@ class Quartic3Model(SemistableModel):
 			return self._rescaled_tame_locus
 		X = self._X
 		AT = self.tame_locus().tree()
-		AT_rescaled = AffinoidTree(X, root = AT.vertices()[0], is_in = AT.is_in(AT.vertices()[0]))
-		for xi in AT.vertices()[1:]:
-			print(AT_rescaled.vertices())
-			print(xi)
+		x = self._FX.gen()
+		gauss_point_in = AT.is_in(X.point_from_discoid(x, self._scaling_factor))
+		AT_rescaled = AffinoidTree(X, root = X.gauss_point(), is_in = gauss_point_in)
+		for xi in AT.vertices():
 			psi, s = xi.discoid()
 			psi = psi.numerator()
-			x = self._FX.gen()
 			vK = self._base_valuation
 			pi = vK.uniformizer()**(vK(vK.uniformizer()).denominator())
 			degree = psi.degree()
@@ -187,7 +256,10 @@ class Quartic3Model(SemistableModel):
 			target, target_tree, lower_target, target_vertex = AT_rescaled.position(new_xi)
 			new_xi_tree = AffinoidTree(X, root=new_xi, is_in = new_xi_in)
 			if not target_vertex:
-				new_lower_target = AffinoidTree(X, target, [lower_target, new_xi_tree], target_tree, AT_rescaled.is_in(target))
+				if not new_xi == target:
+					new_lower_target = AffinoidTree(X, target, [lower_target, new_xi_tree], target_tree, AT_rescaled.is_in(target))
+				else:
+					new_lower_target = AffinoidTree(X, target, [lower_target], target_tree, new_xi_in)
 				lower_target.make_parent(new_lower_target)
 				lower_target_index = target_tree._children.index(lower_target)
 				target_tree._children[lower_target_index] = new_lower_target
@@ -199,9 +271,12 @@ class Quartic3Model(SemistableModel):
 		return self._rescaled_tame_locus
 
 
-	
-
 	def tail_locus(self):
+		r"""
+        Return the *tail locus* associated to `Y`, which is part of the tame locus.
+        It is the difference of the ``potential_tame_locus`` (as studied in Sections 4.4--4.5 of [Oss24]) and the interior locus
+
+        """
 
 		if hasattr(self, "_tail_locus"):
 			return self._tail_locus
@@ -220,9 +295,8 @@ class Quartic3Model(SemistableModel):
 
 	def interior_locus(self):
 		r"""
-		Return the image of the *interior locus* under the map `\varphi\colon Y\to X`.
-
-		It is an affinoid subdomain of `X^{\textrm{an}}`.
+		Return the *interior locus* associated to `Y`.
+		It is an affinoid subdomain of `X^{\textrm{an}}`, computed using the recipe explained in Section 4.6 of [Oss24].
 
 		"""
 
@@ -273,19 +347,14 @@ class Quartic3Model(SemistableModel):
 
 			for leaf in [leaf for leaf in T.leaves(subtrees=True) if leaf.root().type() == 'I' and not leaf.root() is X.infty()]:
 				xi = leaf.root()
-				print(xi)
 				discoid = xi.approximation(require_maximal_degree=True).discoid()
 				psi = discoid[0]
 				d = psi.degree()
-				print(len(v.extensions(L)))
 				wL = [w for w in v.extensions(L) if w(psi.numerator()(a)) >= discoid[1]]
 				assert len(wL) == 1, "unsure which valuation corresponds to this factor..."
 				wL = wL[0]
 				w = wL.extensions(M)[0] #it should not matter which extension to M we choose
 				
-				print([w(good_equation.monomial_coefficient(y**2*x**i)) for i in range(3)])
-				print([w(good_equation.monomial_coefficient(y*x**i)) for i in range(4)])
-				print([w(good_equation.monomial_coefficient(x**i)) for i in range(5)])
 				A = minimum([AffineMap(i, w(good_equation.monomial_coefficient(y**2*x**i))) for i in range(3) if not good_equation.monomial_coefficient(y**2*x**i) == 0])
 				B = minimum([AffineMap(i, w(good_equation.monomial_coefficient(y*x**i))) for i in range(4) if not good_equation.monomial_coefficient(y*x**i) == 0])
 				C = minimum([AffineMap(i, w(good_equation.monomial_coefficient(x**i))) for i in range(5) if not good_equation.monomial_coefficient(x**i) == 0])
@@ -299,7 +368,7 @@ class Quartic3Model(SemistableModel):
 					NP = npolygon(psi.numerator(), a, w)
 					if NP.vertices()[0][0] == 1 or -NP.slopes()[0] >= r:
 						break
-					print("We have to improve an approximation, stand by...")
+					#We have to improve the approximation
 					discoid = xi.improved_approximation().discoid()
 					psi = discoid[0]
 				path_AT = AffinoidTree(X, root = xi, is_in = D(+Infinity) == 0)
@@ -351,8 +420,12 @@ class Quartic3Model(SemistableModel):
 		return self._interior_locus
 
 
-
 	def potential_tail_locus(self):
+		"""
+        Return the *potential tail locus* associated to `Y`, as studied in Sections 4.4 and 4.5 of [Oss24].
+        Among its boundary points are all boundary points of the tail locus.
+
+        """
 
 		if hasattr(self, "_potential_tail_locus"):
 			return self._potential_tail_locus
@@ -384,10 +457,10 @@ class Quartic3Model(SemistableModel):
 		b0 = h(F.monomial_coefficient(y))
 		C = [h(F.monomial_coefficient(t**i)) for i in range(F.coefficient({y:0, u:0}).degree(t) + 1)]
 
-		print("b0=", b0)
-		print("c2=", C[2])
-		print("c3=", C[3])
-		print("c4=", C[4])
+		#print("b0=", b0)
+		#print("c2=", C[2])
+		#print("c3=", C[3])
+		#print("c4=", C[4])
 
 		b0 = b0.norm()
 		C = [C[i].norm() for i in range(len(C))]
@@ -401,14 +474,32 @@ class Quartic3Model(SemistableModel):
 
 
 def _discoid_radius(NP, r):
+	"""
+    Compute the radius of a discoid from the radius of the disks into which it splits, following Section 2.3 of
 
-	# Input: r is any rational number, NP is a Newton polygon
-	#	     the first slope of NP is properly infinity, we check that r is not larger than the first slope
-	# Output: The sum over the first d slopes of NP, except as soon as r is smaller than a given slope we replace that slope with r
-	#         In particular, the first slope infinity is replaced with r
-	# Example: Let NP be the Newton polygon with vertices (1, 3), (3, 0), (9, 0), let d=6 and r=3
-	#          Then r is greater than all slopes except the first, so the output is 3 + 3/2 + 3/2 + 0 + 0 + 0 = 6
-	#          If on the other hand r=1, then three slopes get replaced, so the output is 1 + 1 + 1 + 0 + 0 + 0 = 3
+    - [Mic20] T. Micu, *Pseudovaluations on Polynomial Rings, Diskoids and Normal Models of the Projective Line*, \
+  	  PhD thesis, 2020.
+
+  	INPUT:
+
+    - ``NP`` - a Newtonp olygon
+    - ``r`` - a rational number
+
+    OUTPUT: The sum over the first d slopes of NP, except as soon as r is smaller than a given slope we replace that slope with r
+    In particular, if the first slope of ``NP`` goes to infinity, it is replaced with r
+
+    EXAMPLES: 
+
+	::
+
+		sage: from mclf.semistable_reduction.quartic3_models import _discoid_radius
+		sage: NP = NewtonPolygon([(1, 3), (3, 0), (9, 0)])
+		sage: _discoid_radius(NP, 3)
+		6
+		sage: _discoid_radius(NP, 1)
+		3
+
+	"""
 
 	if NP.vertices()[0][0] == 1: #the first slope is infinity
 		slopes = [+Infinity] + [-x for x in NP.slopes()]
@@ -421,6 +512,9 @@ def _discoid_radius(NP, r):
 
 
 def npolygon(f, a, v):
+	"""
+    Return the Newton polygon of ``f`` with respect to the valuation ``v`` centered at ``a``
+    """
 
 	if a in f.parent():
 		x = f.parent().gen()
@@ -438,11 +532,10 @@ def npolygon(f, a, v):
 	return NewtonPolygon(points)
 
 
-
-
 def random_quartic(large_coefficients=False, convenient_form=False):
-
-	#returns a simple, randomly chosen quartic with coefficients that are small integers
+	"""
+    Return a plane quartic in the normal form we consider, whose coefficients are small integers
+    """
 
 	A = [_random_little_integer(large_coefficients) for i in range(3)]
 	B = [_random_little_integer(large_coefficients) for i in range(4)]
@@ -461,13 +554,14 @@ def random_quartic(large_coefficients=False, convenient_form=False):
 	R = R['y']
 	G = R(F)
 	if not G.is_irreducible():
-		print("This quartic is not irreducible, try again...")
+		#This quartic is not irreducible, try again...
 		return random_quartic(large_coefficients, convenient_form)
 	Y = SmoothProjectiveCurve(F)
 	if not Y.genus() == 3:
-		print("This quartic is not smooth, try again...")
+		#This quartic is not smooth, try again...
 		return random_quartic(large_coefficients, convenient_form)
 	return Y
+
 
 def _random_little_integer(large_coefficients=False):
 
@@ -567,8 +661,6 @@ class PiecewiseAffineMap(SageObject):
 	def __init__(self, res):
 
 		for p in zip(res, res[1:]):
-			print(p[0].end_value())
-			print(p[1].start_value())
 			assert p[0].end_value() == p[1].start_value(), "this function is not continuous"
 
 		self._res = res
