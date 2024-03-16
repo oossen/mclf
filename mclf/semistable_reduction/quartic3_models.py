@@ -195,7 +195,7 @@ class Quartic3Model(SemistableModel):
 		assert R.reduction_genus() == 3, "We are not done"
 		if verbosity > 0:
 			print("We are done!")
-		self.reduction_tree = R
+		self._reduction_tree = R
 
 
 	def discriminant_tree(self):
