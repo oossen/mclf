@@ -162,7 +162,7 @@ class Quartic3Model(SemistableModel):
 		if abelian_genus == 3:
 			if verbosity > 0:
 				print("We are done!")
-			return R
+			self._reduction_tree = R
 
 		missing_genus = 3 - abelian_genus
 		if verbosity > 0:
@@ -182,7 +182,7 @@ class Quartic3Model(SemistableModel):
 		if R.reduction_genus() == 3:
 			if verbosity > 0:
 				print("We are done!")
-			return R
+			self._reduction_tree = R
 
 		if verbosity > 0:
 			print("We make sure branch points are separated")
